@@ -1,7 +1,9 @@
 use std::fs;
 use std::path::Path;
 use std::error::Error;
-use image::{GenericImageView, ImageBuffer, RgbImage, imageops, DynamicImage, GenericImage};
+
+use exif::{In, Tag};
+use image::imageops;
 
 pub struct Config {
     pub width: u32,
@@ -58,10 +60,6 @@ impl Config {
             return Err("Dest dir must exist.");
         }
 
-        // Convert paths to canonical paths
-        // source_dir = String::from(fs::canonicalize(source_dir).unwrap().to_str().unwrap());
-        // dest_dir = String::from(fs::canonicalize(dest_dir).unwrap().to_str().unwrap());
-
         Ok(Config {
             width,
             height,
@@ -75,9 +73,11 @@ pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
     println!("Source: {}", config.source_dir);
     println!("Destination: {}", config.dest_dir);
 
+    // Ideally, we don't want to store the list of files in memory
+    // so we will try to refactor this to create thumbnail per iteration on readdir
     let files = list_files(&config.source_dir)?;
     for file in files {
-        println!("file: {}", file);
+        println!("{}", file);
         create_thumb(&file, &config)?;
     }
     Ok(())
@@ -100,48 +100,50 @@ fn list_files(dir: &String) -> Result<Vec<String>, Box<dyn Error>> {
     Ok(files)
 }
 
+fn parse_exif_orientation(path: &Path) -> Result<u32, Box<dyn Error>> {
+    let file = fs::File::open(path)?;
+
+    let mut buf_reader = std::io::BufReader::new(&file);
+    let exit_reader = exif::Reader::new();
+    let exif = exit_reader.read_from_container(&mut buf_reader)?;
+
+    // Default to 1 if cannot identify orientation
+    let result = match exif.get_field(Tag::Orientation, In::PRIMARY) {
+        Some(orientation) => {
+            match orientation.value.get_uint(0) {
+                Some(v @ 1..=8) => v,
+                _ => 1,
+            }
+        },
+        None => 1,
+    };
+
+    Ok(result)
+}
+
 fn create_thumb(filename: &String, config: &Config) -> Result<(), Box<dyn Error>>{
     let source_file = Path::new(config.source_dir.as_str()).join(filename);
     let dest_file = Path::new(config.dest_dir.as_str()).join(filename);
 
+    let orientation = match parse_exif_orientation(&source_file) {
+        Ok(v) => v,
+        Err(_) => 1,
+    };
+
     let img = image::open(source_file)?;
-    // Copy image to remove exif information
-    let mut no_exif = DynamicImage::new_rgb8(img.width(), img.height());
-    no_exif.copy_from(&img, 0, 0);
 
-    let cropped = no_exif.thumbnail_exact(config.width, config.height);
-    cropped.save(dest_file)?;
+    // Rotate based on exit orientation before cropping
+    let mut rotated_img = match orientation {
+        8 => img.rotate90(),
+        3 => img.rotate180(),
+        6 => img.rotate90(),
+        _ => img
+    };
 
-    Ok(())
-}
+    let source_width = rotated_img.width();
+    let source_height = rotated_img.height();
 
-fn create_thumb_v3(filename: &String, config: &Config) -> Result<(), Box<dyn Error>>{
-    let source_file = Path::new(config.source_dir.as_str()).join(filename);
-    let dest_file = Path::new(config.dest_dir.as_str()).join(filename);
-
-    let mut img = image::open(source_file)?;
-    let cropped = img.thumbnail_exact(config.width, config.height);
-    cropped.save(dest_file)?;
-
-    Ok(())
-}
-
-fn create_thumb_v2(filename: &String, config: &Config) -> Result<(), Box<dyn Error>>{
-    let source_file = Path::new(config.source_dir.as_str()).join(filename);
-    let source_file_str = source_file.to_str().unwrap();
-    println!("source_file_str, {}", source_file_str);
-
-    let dest_file = Path::new(config.dest_dir.as_str()).join(filename);
-    let dest_file_str = dest_file.to_str().unwrap();
-    println!("dest_file_str: {}", dest_file_str);
-
-    let mut img = image::open(source_file)?;
-
-    // let cropped = img.thumbnail_exact(config.width, config.height);
-
-    let source_width = img.width();
-    let source_height = img.height();
-
+    // This one is brought to you by chad jipitty
     let aspect_ratio = config.width as f32 / config.height as f32;
     let current_aspect_ratio = source_width as f32 / source_height as f32;
 
@@ -157,20 +159,14 @@ fn create_thumb_v2(filename: &String, config: &Config) -> Result<(), Box<dyn Err
         (source_width, crop_height, 0, y_offset)
     };
 
-    // Crop the image
-    let cropped = img.crop(x_offset, y_offset, crop_width, crop_height);
+    // Crop the image using scaled dimensions, cutting off some parts
+    let cropped = rotated_img.crop(x_offset, y_offset, crop_width, crop_height);
 
     // Resize the cropped image to the desired dimensions
     let resized_img = cropped.resize_exact(config.width, config.height, imageops::FilterType::Lanczos3);
 
-
     // Save the resized image
     resized_img.save(dest_file)?;
 
-    // The dimensions method returns the images width and height.
-    // println!("dimensions {:?}", img.dimensions());
-
-    // The color method returns the image's `ColorType`.
-    // println!("{:?}", img.color());
     Ok(())
 }
