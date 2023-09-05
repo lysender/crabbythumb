@@ -92,6 +92,7 @@ fn list_files(dir: &String) -> Result<Vec<String>, Box<dyn Error>> {
             let ext = item_path.extension().unwrap().to_str().unwrap();
             let filename = item_path.file_name().unwrap().to_str().unwrap();
 
+            // Ensure we only process these types of images for now...
             if ["jpg", "png", "gif", "jpeg"].contains(&ext.to_lowercase().as_str()) {
                 files.push(String::from(filename));
             }
