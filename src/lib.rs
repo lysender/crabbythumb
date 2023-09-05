@@ -17,8 +17,8 @@ impl Config {
 
         let width_str = args[1].clone();
         let height_str = args[2].clone();
-        let source_dir = args[3].clone();
-        let dest_dir = args[4].clone();
+        let mut source_dir = args[3].clone();
+        let mut dest_dir = args[4].clone();
 
         // Convert width and height to integers
         let width = match width_str.parse::<u32>() {
@@ -57,6 +57,10 @@ impl Config {
             return Err("Dest dir must exist.");
         }
 
+        // Convert paths to canonical paths
+        // source_dir = String::from(fs::canonicalize(source_dir).unwrap().to_str().unwrap());
+        // dest_dir = String::from(fs::canonicalize(dest_dir).unwrap().to_str().unwrap());
+
         Ok(Config {
             width,
             height,
@@ -67,5 +71,7 @@ impl Config {
 }
 
 pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
+    println!("Source: {}", config.source_dir);
+    println!("Destination: {}", config.dest_dir);
     Ok(())
 }
