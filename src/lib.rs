@@ -5,6 +5,7 @@ use std::error::Error;
 use exif::{In, Tag};
 use image::imageops;
 
+#[derive(Clone)]
 pub struct Config {
     pub width: u32,
     pub height: u32,
@@ -69,17 +70,28 @@ impl Config {
     }
 }
 
-pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
-    println!("Source: {}", config.source_dir);
-    println!("Destination: {}", config.dest_dir);
+pub async fn run(config: Config) -> Result<(), Box<dyn Error>> {
+    let mut handles = vec![];
 
     // Ideally, we don't want to store the list of files in memory
     // so we will try to refactor this to create thumbnail per iteration on readdir
     let files = list_files(&config.source_dir)?;
     for file in files {
-        println!("{}", file);
-        create_thumb(&file, &config)?;
+        // Clone jutsu
+        let current_file = file.clone();
+        let current_config = config.clone();
+
+        let handle = tokio::spawn(async move {
+            create_thumb(&current_file, &current_config).await.unwrap();
+        });
+
+        handles.push(handle);
     }
+
+    for handle in handles {
+        handle.await.unwrap();
+    }
+
     Ok(())
 }
 
@@ -122,7 +134,7 @@ fn parse_exif_orientation(path: &Path) -> Result<u32, Box<dyn Error>> {
     Ok(result)
 }
 
-fn create_thumb(filename: &String, config: &Config) -> Result<(), Box<dyn Error>>{
+async fn create_thumb(filename: &String, config: &Config) -> Result<(), Box<dyn Error>> {
     let source_file = Path::new(config.source_dir.as_str()).join(filename);
     let dest_file = Path::new(config.dest_dir.as_str()).join(filename);
 
@@ -168,6 +180,8 @@ fn create_thumb(filename: &String, config: &Config) -> Result<(), Box<dyn Error>
 
     // Save the resized image
     resized_img.save(dest_file)?;
+
+    println!("{}", filename);
 
     Ok(())
 }
