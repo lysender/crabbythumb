@@ -1,9 +1,8 @@
 use std::fs;
 use std::path::Path;
-use std::error::Error;
-
 use exif::{In, Tag};
 use image::imageops;
+use std::error::Error;
 
 #[derive(Clone)]
 pub struct Config {
@@ -77,7 +76,7 @@ pub async fn run(config: Config) -> Result<(), Box<dyn Error>> {
     // so we will try to refactor this to create thumbnail per iteration on readdir
     let files = list_files(&config.source_dir)?;
     for file in files {
-        // Clone jutsu
+        // Clone parameters, there must be a better way to do this right?
         let current_file = file.clone();
         let current_config = config.clone();
 
