@@ -6,6 +6,8 @@ use image::imageops;
 use crate::config::Config;
 use crate::error::Result;
 
+const EXTENSIONS: [&str; 4]  = ["jpg", "png", "gif", "jpeg"];
+
 pub async fn run(config: Config) -> Result<()> {
     let mut handles = vec![];
 
@@ -37,12 +39,14 @@ fn list_files(dir: &String) -> Result<Vec<String>> {
     for entry in fs::read_dir(path)? {
         if let Ok(item) = entry {
             let item_path = item.path();
-            let ext = item_path.extension().unwrap().to_str().unwrap();
-            let filename = item_path.file_name().unwrap().to_str().unwrap();
+            if let Some(ext_node) = item_path.extension() {
+                let ext = ext_node.to_str().unwrap();
+                let filename = item_path.file_name().unwrap().to_str().unwrap();
 
-            // Ensure we only process these types of images for now...
-            if ["jpg", "png", "gif", "jpeg"].contains(&ext.to_lowercase().as_str()) {
-                files.push(String::from(filename));
+                // Ensure we only process these types of images for now...
+                if EXTENSIONS.contains(&ext.to_lowercase().as_str()) {
+                    files.push(String::from(filename));
+                }
             }
         }
     }
