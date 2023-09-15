@@ -1,7 +1,12 @@
 use std::env;
 use std::process;
 
-use crabbythumb::{Config, run};
+use crate::config::Config;
+use crate::run::run;
+
+mod error;
+mod config;
+mod run;
 
 #[tokio::main]
 async fn main() {

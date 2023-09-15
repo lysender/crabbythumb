@@ -2,74 +2,11 @@ use std::fs;
 use std::path::Path;
 use exif::{In, Tag};
 use image::imageops;
-use std::error::Error;
 
-#[derive(Clone)]
-pub struct Config {
-    pub width: u32,
-    pub height: u32,
-    pub source_dir: String,
-    pub dest_dir: String
-}
+use crate::config::Config;
+use crate::error::Result;
 
-impl Config {
-    pub fn build(args: &[String]) -> Result<Config, &'static str> {
-        if args.len() != 5 {
-            return Err("Usage: crabbythumb width height source_dir dest_dir");
-        }
-
-        let width_str = args[1].clone();
-        let height_str = args[2].clone();
-        let source_dir = args[3].clone();
-        let dest_dir = args[4].clone();
-
-        // Convert width and height to integers
-        let width = match width_str.parse::<u32>() {
-            Ok(num) => num,
-            Err(_) => {
-                return Err("Width must be a number");
-            }
-        };
-        let height = match height_str.parse::<u32>() {
-            Ok(num) => num,
-            Err(_) => {
-                return Err("Height must be a number");
-            }
-        };
-
-        // Check for correct dimensions for thumbnails
-        if width < 100 || width > 200 {
-            return Err("Width must be between 100 to 200 pixels");
-        }
-        if height < 100 || height > 200 {
-            return Err("Height must be between 100 to 200 pixels");
-        }
-        if height > width {
-            return Err("Width must be greater than or equal to height.");
-        }
-
-        if source_dir == dest_dir {
-            return Err("Source dir and dest dir must be different.");
-        }
-
-        // Check whether the source or dest dirs are valid
-        if !Path::new(&source_dir).is_dir() {
-            return Err("Source dir must exist.");
-        }
-        if !Path::new(&dest_dir).is_dir() {
-            return Err("Dest dir must exist.");
-        }
-
-        Ok(Config {
-            width,
-            height,
-            source_dir,
-            dest_dir,
-        })
-    }
-}
-
-pub async fn run(config: Config) -> Result<(), Box<dyn Error>> {
+pub async fn run(config: Config) -> Result<()> {
     let mut handles = vec![];
 
     // Ideally, we don't want to store the list of files in memory
@@ -94,7 +31,7 @@ pub async fn run(config: Config) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-fn list_files(dir: &String) -> Result<Vec<String>, Box<dyn Error>> {
+fn list_files(dir: &String) -> Result<Vec<String>> {
     let mut files: Vec<String> = Vec::new();
     let path = Path::new(dir);
     for entry in fs::read_dir(path)? {
@@ -112,7 +49,7 @@ fn list_files(dir: &String) -> Result<Vec<String>, Box<dyn Error>> {
     Ok(files)
 }
 
-fn parse_exif_orientation(path: &Path) -> Result<u32, Box<dyn Error>> {
+fn parse_exif_orientation(path: &Path) -> Result<u32> {
     let file = fs::File::open(path)?;
 
     let mut buf_reader = std::io::BufReader::new(&file);
@@ -133,7 +70,7 @@ fn parse_exif_orientation(path: &Path) -> Result<u32, Box<dyn Error>> {
     Ok(result)
 }
 
-async fn create_thumb(filename: &String, config: &Config) -> Result<(), Box<dyn Error>> {
+async fn create_thumb(filename: &String, config: &Config) -> Result<()> {
     let source_file = Path::new(config.source_dir.as_str()).join(filename);
     let dest_file = Path::new(config.dest_dir.as_str()).join(filename);
 
