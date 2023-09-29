@@ -1,5 +1,5 @@
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use exif::{In, Tag};
 use image::imageops;
 
@@ -33,10 +33,9 @@ pub async fn run(config: Config) -> Result<()> {
     Ok(())
 }
 
-fn list_files(dir: &String) -> Result<Vec<String>> {
+fn list_files(dir: &PathBuf) -> Result<Vec<String>> {
     let mut files: Vec<String> = Vec::new();
-    let path = Path::new(dir);
-    for entry in fs::read_dir(path)? {
+    for entry in fs::read_dir(dir)? {
         if let Ok(item) = entry {
             let item_path = item.path();
             if let Some(ext_node) = item_path.extension() {
@@ -75,8 +74,8 @@ fn parse_exif_orientation(path: &Path) -> Result<u32> {
 }
 
 async fn create_thumb(filename: &String, config: &Config) -> Result<()> {
-    let source_file = Path::new(config.source_dir.as_str()).join(filename);
-    let dest_file = Path::new(config.dest_dir.as_str()).join(filename);
+    let source_file = config.source_dir.as_path().join(filename);
+    let dest_file = config.dest_dir.as_path().join(filename);
 
     let orientation = match parse_exif_orientation(&source_file) {
         Ok(v) => v,

@@ -1,7 +1,7 @@
-use std::env;
 use std::process;
+use clap::Parser;
 
-use crate::config::Config;
+use crate::config::{Config, Args};
 use crate::run::run;
 
 mod error;
@@ -10,8 +10,8 @@ mod run;
 
 #[tokio::main]
 async fn main() {
-    let args: Vec<String> = env::args().collect();
-    let config = Config::build(&args).unwrap_or_else(|err| {
+    let args = Args::parse();
+    let config = Config::build(args).unwrap_or_else(|err| {
         eprintln!("{err}");
         process::exit(1);
     });

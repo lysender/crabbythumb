@@ -1,66 +1,66 @@
-use std::path::Path;
+use std::path::PathBuf;
+use clap::Parser;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Config {
     pub width: u32,
     pub height: u32,
-    pub source_dir: String,
-    pub dest_dir: String
+    pub source_dir: PathBuf,
+    pub dest_dir: PathBuf,
 }
 
 impl Config {
-    pub fn build(args: &[String]) -> Result<Config, &'static str> {
-        if args.len() != 5 {
-            return Err("Usage: crabbythumb width height source_dir dest_dir");
-        }
-
-        let width_str = args[1].clone();
-        let height_str = args[2].clone();
-        let source_dir = args[3].clone();
-        let dest_dir = args[4].clone();
-
-        // Convert width and height to integers
-        let width = match width_str.parse::<u32>() {
-            Ok(num) => num,
-            Err(_) => {
-                return Err("Width must be a number");
-            }
-        };
-        let height = match height_str.parse::<u32>() {
-            Ok(num) => num,
-            Err(_) => {
-                return Err("Height must be a number");
-            }
-        };
-
+    pub fn build(args: Args) -> Result<Config, &'static str> {
         // Check for correct dimensions for thumbnails
-        if width < 100 || width > 200 {
+        if args.width < 100 || args.width > 200 {
             return Err("Width must be between 100 to 200 pixels");
         }
-        if height < 100 || height > 200 {
+        if args.height < 100 || args.height > 200 {
             return Err("Height must be between 100 to 200 pixels");
         }
-        if height > width {
+        if args.height > args.width {
             return Err("Width must be greater than or equal to height.");
         }
 
-        if source_dir == dest_dir {
+        if args.source_dir == args.dest_dir {
             return Err("Source dir and dest dir must be different.");
         }
 
         // Check whether the source or dest dirs are valid
-        if !Path::new(&source_dir).is_dir() {
+        if !args.source_dir.is_dir() {
             return Err("Source dir must exist.");
         }
-        if !Path::new(&dest_dir).is_dir() {
+        if !args.dest_dir.is_dir() {
             return Err("Dest dir must exist.");
         }
 
         Ok(Config {
-            width,
-            height,
-            source_dir,
-            dest_dir,
+            width: args.width,
+            height: args.height,
+            source_dir: args.source_dir,
+            dest_dir: args.dest_dir,
         })
     }
+}
+
+/// CLI tool to create thumbnail images from source_dir to dest_dir
+#[derive(Parser, Debug)]
+#[command(author, version, about, long_about = None)]
+pub struct Args {
+    /// Thumbnail image width
+    #[arg(long, default_value_t = 150)]
+    pub width: u32,
+
+    /// Thumbnail image height
+    #[arg(long, default_value_t = 125)]
+    pub height: u32,
+
+    /// Source directory containing the original images
+    #[arg(short, long)]
+    pub source_dir: PathBuf,
+
+    /// Destination directory to save the generated thumbnail images
+    #[arg(short, long)]
+    pub dest_dir: PathBuf,
+
 }
