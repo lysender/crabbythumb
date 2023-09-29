@@ -124,3 +124,4 @@ async fn create_thumb(filename: &String, config: &Config) -> Result<()> {
 
     Ok(())
 }
+

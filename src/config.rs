@@ -62,5 +62,5 @@ pub struct Args {
     /// Destination directory to save the generated thumbnail images
     #[arg(short, long)]
     pub dest_dir: PathBuf,
-
 }
+

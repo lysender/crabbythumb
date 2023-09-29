@@ -18,11 +18,7 @@ cargo build --release
 ## Usage
 
 ```shell
-crabbythumb width height source_dir dest_dir
+crabbythumb --width 150 --height 125 --source_dir images/original --dest_dir images/thumbnails
 ```
 
-Example:
-
-```shell
-crabbythumb 150 125 images/original images/thumbnails
-```
+Note: width and height are optional and defaults to 150x125 pixels.
